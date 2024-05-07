@@ -1,0 +1,1 @@
+equity raw data
