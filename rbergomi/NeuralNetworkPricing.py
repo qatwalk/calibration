@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import json
-from math import gamma
 from scipy.interpolate import CubicSpline
 
 
@@ -249,79 +248,3 @@ class NeuralNetworkPricer:
             )
 
         return iv
-
-
-def CheckNonNeqReqTheta(v0, H, t, theta):
-    # Description: In the context of the rough Heston model, we check if
-    # theta(t)dt + v0*L(dt) is a non-negative measure where
-    # L(dt) = t^(-H-1/2)/gamma(1/2-H) dt.
-    #
-    # Parameters:
-    #   v0:     [1x1 real]  Initial instantaneous variance.
-    #   H:      [1x1 real]  Hurst exponent.
-    #   t:      [Nx1 real]  Time points between which theta is piecewise constant
-    # 						(zero excluded). We assume theta is extrapolated flat.
-    #   theta:  [Nx1 real]  Theta values for each interval.
-    #
-    # Output:
-    #   valid:  [1x1 logical] True if theta(t)dt + v0*L(dt) is a non-negative measure.
-    #   val:    [Nx1 real] The values that should be non-negative.
-
-    # Because the density of L(dt) = t^(-H-1/2)/gamma(1/2-H) dt is non-increasing,
-    # it suffices to check the right end points:
-    val = theta + (v0 / gamma(1 / 2 - H)) * pow(t, -H - 1 / 2)
-
-    # For the requirement to be satisfied for t -> infinity also, we need additionally:
-    val[-1] = theta[-1]
-
-    # Check if measure is non-negative:
-    valid = all(val >= 0)
-
-    return [valid, val]
-
-
-def GetThetaFromXi(v0, H, t, xi):
-    # Description: Consider (in the context of the rough Heston model) the following,
-    #
-    #   xi(t) = v0 + int_0^t K(t-s) theta(s) ds,	t >= 0,
-    #
-    # where v0 >= 0, K(t) = (1/gamma(H+1/2))*t^(H-1/2), H between 0 and 1/2, and theta
-    # is a deterministic function that is piecewise constant betwen the time points
-    # 0 < t_1 < t_2 < ... < t_n.
-    #
-    # Given v0 and xi(t_i), i=1,2,...,n, we return the theta-values that ensures
-    # that t -> (t,xi(t)) goes through the points (t_i,xi(t_i)), i=1,2,...,n.
-    #
-    # Parameters:
-    # 	v0:		[1x1 real] Instantaneous variance.
-    #   H:      [1x1 real] Hurst exponent.
-    #   t:      [nx1 real] Time points t_1,t_2,...,t_n.
-    #   xi:     [nx1 real] Forward variances at the maturities t_1,t_2,...,t_n.
-    #
-    # Output:
-    #   theta:  [nx1 real] Theta values.
-    #
-
-    t_ext = np.concatenate((np.zeros((1, 1)), t))
-    n = len(xi)
-    theta = np.zeros((n, 1))
-    for i in range(0, n):
-        if i == 0:
-            wii = (1 / gamma(H + 3 / 2)) * pow(t[i], H + 1 / 2)
-            wik_theta_sum = 0
-        else:
-            wik_theta_sum = 0
-            for j in range(1, i + 1):
-                wik_theta_sum = (
-                    wik_theta_sum
-                    + (1 / gamma(H + 3 / 2))
-                    * (
-                        pow(t[i] - t_ext[j - 1], H + 1 / 2)
-                        - pow(t[i] - t_ext[j], H + 1 / 2)
-                    )
-                    * theta[j - 1]
-                )
-            wii = (1 / gamma(H + 3 / 2)) * pow(t[i] - t[i - 1], H + 1 / 2)
-        theta[i] = (xi[i] - v0 - wik_theta_sum) / wii
-
-    return theta
