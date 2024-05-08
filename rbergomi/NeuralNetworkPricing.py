@@ -56,38 +56,19 @@ class NeuralNetworkPricer:
 
         # Load contract grid:
         self.T = np.loadtxt(contracts_folder + "\\expiries.txt").reshape(-1, 1)
-        self.k = np.loadtxt(contracts_folder + "\\logMoneyness.txt").reshape(-1, 1)
+        self.k = np.loadtxt(contracts_folder + "\\logMoneyness.txt").reshape(
+            -1, 1
+        )
 
         # Set the forward variance curve grid points (in case relevant):
-        Txi = np.array(
+        tiny = 1e-6
+        Txi = np.concatenate(
             [
-                0.0025,
-                0.0050,
-                0.0075,
-                0.0100,
-                0.0125,
-                0.0150,
-                0.0175,
-                0.0200,
-                0.0400,
-                0.0600,
-                0.0800,
-                0.1000,
-                0.1200,
-                0.1400,
-                0.1600,
-                0.2800,
-                0.4000,
-                0.5200,
-                0.6400,
-                0.7600,
-                0.8800,
-                1.0000,
-                1.2500,
-                1.5000,
-                1.7500,
-                2.0000,
-                3.0000,
+                np.arange(0.0025, 0.0175 + tiny, 0.0025),
+                np.arange(0.02, 0.14 + tiny, 0.02),
+                np.arange(0.16, 1 + tiny, 0.12),
+                np.arange(1.25, 2 + tiny, 0.25),
+                [3],
             ]
         )
 
@@ -105,7 +86,9 @@ class NeuralNetworkPricer:
         idxOutStart = 0
         for i in range(len(json_files)):
             self.nn.append(
-                NeuralNetwork(weights_folder + "\\" + model_name + json_files[i])
+                NeuralNetwork(
+                    weights_folder + "\\" + model_name + json_files[i]
+                )
             )
             self.idx_in.append(np.arange(0, self.nn[i].scaleMeanIn.shape[0]))
             idxOutEnd = idxOutStart + self.nn[i].scaleMeanOut.shape[0]
@@ -117,17 +100,17 @@ class NeuralNetworkPricer:
             self.lb = np.concatenate(
                 (np.array([0, 0.1, -1]), pow(0.05, 2) * np.ones(28))
             ).reshape(-1, 1)
-            self.ub = np.concatenate((np.array([0.5, 1.25, 0]), np.ones(28))).reshape(
-                -1, 1
-            )
+            self.ub = np.concatenate(
+                (np.array([0.5, 1.25, 0]), np.ones(28))
+            ).reshape(-1, 1)
             self.Txi = np.concatenate((np.array([0]), Txi))
         elif model_name == "rbergomi":
             self.lb = np.concatenate(
                 (np.array([0, 0.75, -1]), pow(0.05, 2) * np.ones(27))
             ).reshape(-1, 1)
-            self.ub = np.concatenate((np.array([0.5, 3.50, 0]), np.ones(27))).reshape(
-                -1, 1
-            )
+            self.ub = np.concatenate(
+                (np.array([0.5, 3.50, 0]), np.ones(27))
+            ).reshape(-1, 1)
             self.Txi = Txi
         elif model_name == "rbergomi_extended":
             self.lb = np.concatenate(
@@ -138,10 +121,14 @@ class NeuralNetworkPricer:
             ).reshape(-1, 1)
             self.Txi = Txi
         elif model_name == "heston":
-            self.lb = np.array([0, pow(0.05, 2), 0, -1, pow(0.05, 2)]).reshape(-1, 1)
+            self.lb = np.array([0, pow(0.05, 2), 0, -1, pow(0.05, 2)]).reshape(
+                -1, 1
+            )
             self.ub = np.array([25, 1, 10, 0, 1]).reshape(-1, 1)
         else:
-            raise Exception("NeuralNetworkPricer:__init__: Invalid model name.")
+            raise Exception(
+                "NeuralNetworkPricer:__init__: Invalid model name."
+            )
 
     def EvalInGrid(self, x):
         # Evaluates the model in the grid points only.
@@ -186,12 +173,18 @@ class NeuralNetworkPricer:
                 idxValid[idxT] = (
                     kq[idxT]
                     >= np.max(
-                        [np.min(self.k[idxGridBelow]), np.min(self.k[idxGridAbove])]
+                        [
+                            np.min(self.k[idxGridBelow]),
+                            np.min(self.k[idxGridAbove]),
+                        ]
                     )
                 ) & (
                     kq[idxT]
                     <= np.min(
-                        [np.max(self.k[idxGridBelow]), np.max(self.k[idxGridAbove])]
+                        [
+                            np.max(self.k[idxGridBelow]),
+                            np.max(self.k[idxGridAbove]),
+                        ]
                     )
                 )
         return np.ravel(idxValid)
