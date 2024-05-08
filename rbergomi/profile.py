@@ -8,7 +8,9 @@ from NeuralNetworkPricing import NeuralNetworkPricer
 
 if __name__ == "__main__":
     # Create a LineProfiler object, specifying the methods to be profiled by line
-    lprofiler = LineProfiler(NeuralNetworkPricer.Eval, NeuralNetworkPricer.EvalInGrid)
+    lprofiler = LineProfiler(
+        NeuralNetworkPricer.Eval, NeuralNetworkPricer.EvalInGrid
+    )
     # Wrap the entry function with the LineProfiler object, then run it.
     lp_wrapper = lprofiler(fit_bergomi)
     lp_wrapper()
